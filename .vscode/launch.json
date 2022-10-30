@@ -25,8 +25,23 @@
                 "--a_header", "English",
                 "--b_header", "Phonetic",
                 "--device", "0:1",
-                "--model", "phonetics_forwar.tm"
+                "--model", "phonetics_forward.tm"
             ]
+            },{
+                "name": "Train reverse phonetic 4000 gpu",
+                "type": "python",
+                "request": "launch",
+                "program": "transmorgrify.py",
+                "console": "integratedTerminal",
+                "justMyCode": true,
+                "args": [
+                    "--train",
+                    "--in_csv", "/home/lansford/Sync/projects/tf_over/sentance_transmogrifier/examples/phonetic/phonetic.csv",
+                    "--b_header", "English",
+                    "--a_header", "Phonetic",
+                    "--device", "0:1",
+                    "--model", "phonetics_backwards.tm"
+                ]
         },{
             "name": "Train short phonetic 4000 gpu",
             "type": "python",
@@ -41,6 +56,81 @@
                 "--b_header", "Phonetic",
                 "--device", "0:1",
                 "--model", "phonetics_small.tm"
+            ]
+        },{
+            "name": "Execute phonetic gpu",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--execute",
+                "--in_csv", "/home/lansford/Sync/projects/tf_over/sentance_transmogrifier/examples/phonetic/phonetic.csv",
+                "--out_csv", "./phonetic_out.csv",
+                "--a_header", "English",
+                "--b_header", "Phonetic",
+                "--device", "0:1",
+                "--model", "phonetics_forward.tm",
+                "--verbose",
+            ]
+        },{
+            "name": "short Execute phonetic",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--execute",
+                "--in_csv", "/home/lansford/Sync/projects/tf_over/sentance_transmogrifier/examples/phonetic/phonetic_short.csv",
+                "--out_csv", "./phonetic_out.csv",
+                "--a_header", "English",
+                "--b_header", "Phonetic",
+                "--model", "phonetics_forward.tm",
+                "--verbose",
+                "--include_stats",
+            ]
+        },{
+            "name": "short Execute reverse phonetic",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--execute",
+                "--in_csv", "/home/lansford/Sync/projects/tf_over/sentance_transmogrifier/examples/phonetic/phonetic_short.csv",
+                "--out_csv", "./reverse_phonetic_out.csv",
+                "--b_header", "English",
+                "--a_header", "Phonetic",
+                "--model", "phonetics_backwards.tm",
+                "--verbose",
+                "--include_stats",
+            ]
+        },{
+            "name": "gradio reverse phonetic",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--gradio",
+                "--model", "phonetics_backwards.tm",
+                "--share",
+            ]
+        },{
+            "name": "gradio forward phonetic",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--gradio",
+                "--model", "phonetics_forward.tm",
+                "--share",
             ]
         }
     ]

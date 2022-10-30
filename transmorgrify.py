@@ -12,7 +12,87 @@ DELETE_FROM = 1
 INSERT_TO = 2
 START = 3
 
+FILE_VERSION = 1
 
+class Transmorgrifyer:
+    def train( self, from_sentances, to_sentances, iterations, device, trailing_context, leading_context, verbose ):
+        X,Y = _parse_for_training( from_sentances, to_sentances, num_pre_context_chars=leading_context, num_post_context_chars=trailing_context )
+
+        #train and save the action_model
+        self.action_model = _train_catboost( X, Y['action'], iterations, verbose=verbose, device=device, model_piece='action' )
+
+        #and the char model
+        #slice through where only the action is insert.
+        insert_indexes = Y['action'] == INSERT_TO
+        self.char_model = _train_catboost( X[insert_indexes], Y['char'][insert_indexes], iterations, verbose=verbose, device=device, model_piece='char' )
+
+        self.trailing_context = trailing_context
+        self.leading_context = leading_context
+        self.iterations = iterations
+
+    def save( self, model ):
+        self.name = model
+        with zipfile.ZipFile( model, mode="w", compression=zipfile.ZIP_DEFLATED, compresslevel=9 ) as myzip:
+            with myzip.open( 'params.json', mode='w' ) as out:
+                out.write( json.dumps({
+                    'version': FILE_VERSION,
+                    'leading_context': self.leading_context,
+                    'trailing_context': self.trailing_context,
+                    'iterations': self.iterations,
+                }).encode())
+            temp_filename = _mktemp()
+            self.action_model.save_model( temp_filename )
+            myzip.write( temp_filename, "action.cb" )
+            self.char_model.save_model( temp_filename )
+            myzip.write( temp_filename,   "char.cb" )
+            os.unlink( temp_filename )
+
+    def load( self, model ):
+        self.name = model
+        with zipfile.ZipFile( model, mode='r' ) as zip:
+            with zip.open( 'params.json' ) as fin:
+                params = json.loads( fin.read().decode() )
+                if params['version'] > FILE_VERSION: raise Exception( f"Version {params['version']} greater than {FILE_VERSION}" )
+                self.leading_context = int(params['leading_context'])
+                self.trailing_context = int(params['trailing_context'])
+                self.iterations = int(params['iterations'])
+            temp_filename = _mktemp()
+            with zip.open( 'action.cb' ) as fin:
+                with open( temp_filename, "wb" ) as fout:
+                    fout.write( fin.read() )
+            self.action_model = CatBoostClassifier().load_model( temp_filename )
+            with zip.open( 'char.cb' ) as fin:
+                with open( temp_filename, "wb" ) as fout:
+                    fout.write( fin.read() )
+            self.char_model   = CatBoostClassifier().load_model(  temp_filename   )
+
+        os.unlink( temp_filename)
+
+    
+    def execute( self, from_sentances, verbose=False ):
+        for i,from_sentance in enumerate(from_sentances):
+
+            yield _do_reconstruct( 
+                action_model=self.action_model, 
+                char_model=self.char_model, 
+                text=from_sentance, 
+                num_pre_context_chars=self.leading_context, 
+                num_post_context_chars=self.trailing_context  )
+            if verbose and i % 10 == 0:
+                print( f"{i} of {len(from_sentances)}" )
+
+    def demo( self, share=False ):
+        import gradio as gr 
+
+        def gradio_function( text ):
+            return list(self.execute( [text] ))[0]
+
+        with gr.Blocks() as demo:
+            name = gr.Markdown( self.name )
+            inp = gr.Textbox( label="Input" )
+            out = gr.Textbox( label="Output" )
+            inp.change( gradio_function, inputs=[inp], outputs=[out] )
+        demo.launch( share=share )
 
 def _list_trace( trace ):
     if trace.parrent is None:
@@ -265,24 +345,12 @@ def _train_catboost( X, y, iterations, device, verbose, model_piece, learning_ra
         model.fit( train_pool, eval_set=validation_pool, verbose=True )
         passed = True
 
-    if( verbose ): print( '{} is fitted: {}',format(model_piece,model.is_fitted()))
+    if( verbose ): print( '{} is fitted: {}'.format(model_piece,model.is_fitted()))
     if( verbose ): print( '{} params:\n{}'.format(model_piece,model.get_params()))
 
     return model
 
-def _train_reconstruct_models( from_sentances, to_sentances, iterations, device, num_pre_context_chars, num_post_context_chars, verbose ):
-  
-    X,Y = _parse_for_training( from_sentances, to_sentances, num_pre_context_chars=num_pre_context_chars, num_post_context_chars=num_post_context_chars )
 
-    #train and save the action_model
-    action_model = _train_catboost( X, Y['action'], iterations, verbose=verbose, device=device, model_piece='action' )
-
-    #and the char model
-    #slice through where only the action is insert.
-    insert_indexes = Y['action'] == INSERT_TO
-    char_model = _train_catboost( X[insert_indexes], Y['char'][insert_indexes], iterations, verbose=verbose, device=device, model_piece='char' )
-
-    return action_model, char_model
 
 def _mktemp():
     #I know mktemp exists in the library but it has been depricated suggesting using
@@ -293,7 +361,103 @@ def _mktemp():
         number += 1
     return f".temp_{number}~"
 
-def train( in_csv, a_header, b_header, model, iterations, device, leading_context,trailing_context, train_percentage, verbose ):
+
+def _do_reconstruct( action_model, char_model, text, num_pre_context_chars, num_post_context_chars  ):
+    # result = ""
+    # for i in range(len(text)):
+    #     pre_context = ( (" " * num_pre_context_chars) + result[max(0,len(result)-num_pre_context_chars):])[-num_pre_context_chars:]
+    #     post_context = (text[i:min(len(text),i+num_post_context_chars)] + (" " * num_post_context_chars))[:num_post_context_chars]
+    #     full_context = pre_context + post_context
+    #     context_as_dictionary = { 'c'+str(c):[full_context[c]] for c in range(len(full_context)) }
+    #     context_as_pd = pd.DataFrame( context_as_dictionary )
+
+    #     model_result = model.predict( context_as_pd )[0]
+
+    #     if not quite and len( result ) % 500 == 0: print( "%" + str(i*100/len(text))[:4] + " " + result[-100:])
+
+    #     if model_result: result += " "
+    #     result += text[i]
+
+    #     pass
+    # return result
+
+    #test for nan.
+    if text != text: text = ''
+
+    working_from = text
+    working_to = ""
+    used_from = ""
+    continuous_added = 0
+    continuous_dropped = 0
+    while working_from and len(working_to) < 3*len(text) and (len(working_to) < 5 or working_to[-5:] != (working_to[-1] * 5)):
+        from_context = (working_from + (" " * num_post_context_chars))[:num_post_context_chars]
+        to_context =   ((" " * num_pre_context_chars) + working_to )[-num_pre_context_chars:]
+        used_context = ((" " * num_pre_context_chars) + used_from  )[-num_pre_context_chars:]
+
+        #construct the context.
+        context_as_dictionary = {}
+        #from_context
+        for i in range( num_post_context_chars ):
+            context_as_dictionary[ f"f{i}" ] = [from_context[i]]
+        #to_context
+        for i in range( num_pre_context_chars ):
+            context_as_dictionary[ f"t{i}" ] = [to_context[i]]
+        #used_context
+        for i in range( num_pre_context_chars ):
+            context_as_dictionary[ f"u{i}" ] = [used_context[i]]
+        #these two things.
+        context_as_dictionary["continuous_added"]   = [continuous_added]
+        context_as_dictionary["continuous_dropped"] = [continuous_dropped]
+
+        #make it a pandas.
+        context_as_pd = pd.DataFrame( context_as_dictionary )
+
+        #run the model
+        action_model_result = action_model.predict( context_as_pd )[0][0]
+
+        if action_model_result == START:
+            pass
+        elif action_model_result == INSERT_TO:
+            #for an insert ask the char model what to insert
+            char_model_result = char_model.predict( context_as_pd )[0][0]
+
+            working_to += char_model_result
+            continuous_added += 1
+            continuous_dropped = 0
+        elif action_model_result == DELETE_FROM:
+            used_from += working_from[0]
+            working_from = working_from[1:]
+            continuous_added = 0
+            continuous_dropped += 1
+        elif action_model_result == MATCH:
+            used_from += working_from[0]
+            working_to += working_from[0]
+            working_from = working_from[1:]
+            continuous_added = 0
+            continuous_dropped = 0
+
+    return working_to
+
+
+#edit distance from https://stackoverflow.com/a/32558749/1419054
+def _levenshteinDistance(s1, s2):
+    if s1 != s1: s1 = ''
+    if s2 != s2: s2 = ''
+    if len(s1) > len(s2):
+        s1, s2 = s2, s1
+
+    distances = range(len(s1) + 1)
+    for i2, c2 in enumerate(s2):
+        distances_ = [i2+1]
+        for i1, c1 in enumerate(s1):
+            if c1 == c2:
+                distances_.append(distances[i1])
+            else:
+                distances_.append(1 + min((distances[i1], distances[i1 + 1], distances_[-1])))
+        distances = distances_
+    return distances[-1]
+
+def train( in_csv, a_header, b_header, model, iterations, device, leading_context, trailing_context, train_percentage, verbose ):
     if verbose: print( "loading csv" )
     full_data = pd.read_csv( in_csv )
 
@@ -302,61 +466,99 @@ def train( in_csv, a_header, b_header, model, iterations, device, leading_contex
 
     if verbose: print( "parcing data for training" )
 
-    action_model, char_model = _train_reconstruct_models( from_sentances=train_data[a_header], 
+
+    tm = Transmorgrifyer()
+
+    tm.train( from_sentances=train_data[a_header], 
             to_sentances=train_data[b_header], 
             iterations = iterations,
             device = device,
-            num_pre_context_chars = leading_context, 
-            num_post_context_chars = trailing_context,
+            leading_context = leading_context, 
+            trailing_context = trailing_context,
             verbose=verbose,
                 )
+    tm.save( model )
 
-    temp_action_filename = _mktemp()
-    action_model.save_model( temp_action_filename )
-    temp_char_filename = _mktemp()
-    char_model.save_model( temp_char_filename )
+def execute( include_stats, in_csv, out_csv, a_header, b_header, model, execute_percentage, verbose ):
+    if verbose: print( "loading csv" )
 
-    with zipfile.ZipFile( model, mode="w", compression=zipfile.ZIP_DEFLATED, compresslevel=9 ) as myzip:
-        with myzip.open( 'params.json', mode='w' ) as out:
-            out.write( json.dumps({
-                'version': 1,
-                'leading_context': leading_context,
-                'trailing_context': trailing_context,
-                'iterations': iterations,
-            }).encode())
-        myzip.write( temp_action_filename, "action.cb" )
-        myzip.write( temp_char_filename,   "char.cb" )
+    full_data = pd.read_csv( in_csv )
 
-    os.unlink( temp_action_filename )
-    os.unlink( temp_char_filename )
+    split_index = int( (100-execute_percentage)/100*len(full_data) )
+    execute_data = full_data.iloc[split_index:,:].reset_index(drop=True)
+
+
+    tm = Transmorgrifyer()
+    tm.load( model )
+
+    results = list(tm.execute( execute_data[a_header ], verbose=verbose ))
+
+    
+    if include_stats:
+        before_edit_distances = []
+        after_edit_distances = []
+        percent_improvement = []
+
+        for row in range(len( execute_data )):
+            before_edit_distances.append(
+                _levenshteinDistance( execute_data[a_header][row], execute_data[b_header][row] )
+            )
+            after_edit_distances.append(
+                _levenshteinDistance( results[row], execute_data[b_header][row] )
+            )
+            percent_improvement.append(
+                100*(before_edit_distances[row] - after_edit_distances[row])/max(1,before_edit_distances[row])
+            )
+
+        pd_results = pd.DataFrame( {
+            "in_data": execute_data[a_header],
+            "out_data": execute_data[b_header],
+            "generated_data": results,
+            "before_edit_distance": before_edit_distances,
+            "after_edit_distance": after_edit_distances,
+            "percent_improvement": percent_improvement,
+        })
+        pd_results.to_csv( out_csv )
+    else:
+        pd_results = pd.DataFrame( {
+            "out_data": execute_data[b_header],
+        })
+        pd_results.to_csv( out_csv )
+
+def safe_float( str ):
+    if str is not None:
+        return float(str)
+    return None #explicit None return.
     
 def main():
     parser = argparse.ArgumentParser(
                     prog = 'transmorgrify.py',
                     description = 'Converts text from one to another according to a model.',
                     epilog = '(C) Joshua Lansford')
-    parser.add_argument('-i', '--in_csv',  help='The csv to read training or input data from', required=True )     
+    parser.add_argument('-t', '--train', action='store_true', help='Train a model instead of executing a model')
+    parser.add_argument('-e', '--execute', action='store_true', help='Use an existing trained model.')
+    parser.add_argument('-g', '--gradio', action='store_true', help='Start a gradio demo with the selected model.' )
+    parser.add_argument('-s', '--share', action='store_true', help="Share the gradio app with a temporary public URL." )
+    parser.add_argument('-i', '--in_csv',  help='The csv to read training or input data from', default='in.csv' )     
     parser.add_argument('-o', '--out_csv',  help='The csv to write conversion to', default='out.csv' )     
     parser.add_argument('-a', '--a_header', help='The column header for training or transforming from', default="source" )
     parser.add_argument('-b', '--b_header',   help='The column header for training the transformation to', default="target"  )
     parser.add_argument('-m', '--model',help='The model file to create during training or use during transformation', default='model.tm' )
-    parser.add_argument('-n', '--iterations', help='The number of iterations to train', default=1000 )
+    parser.add_argument('-n', '--iterations', help='The number of iterations to train', default=2000 )
     parser.add_argument('-d', '--device',  help='Which device, i.e. if useing GPU', default='cpu' )
     parser.add_argument('-x', '--context', help='The number of leading and trailing chars to use as context', default=7 )
-    parser.add_argument('-t', '--train', action='store_true', help='Train a model instead of executing a model')
     parser.add_argument('-p', '--train_percentage', help="The percentage of data to train on, leaving the rest for testing.")
-    parser.add_argument('-e', '--execute', action='store_true', help='Use an existing trained model.')
     parser.add_argument('-v', '--verbose', action='store_true', help='Talks alot?' )
+    parser.add_argument('-c', '--include_stats',   action='store_true', help='Use b_header to compute stats and add to output csv.')
                         
 
     args = parser.parse_args()
 
-    if not args.train and not args.execute: print( "Must include --execute and/or --train to do something." )
+    if not args.train and not args.execute and not args.gradio: print( "Must include --execute, --train and/or --gradio to do something." )
 
     
     if args.train:
-
-        train_percentage = args.train_percentage
+        train_percentage = safe_float(args.train_percentage)
         if train_percentage is None:
             if args.execute:
                 train_percentage = 50
@@ -367,15 +569,40 @@ def main():
                a_header=args.a_header, 
                b_header=args.b_header, 
                model=args.model,
-               iterations=args.iterations,
+               iterations=int(args.iterations),
                device=args.device,
-               leading_context=args.context,
-               trailing_context=args.context,
+               leading_context=int(args.context),
+               trailing_context=int(args.context),
                train_percentage=train_percentage,
                verbose=args.verbose,
                )
 
-    #print(args)
+
+    if args.execute:
+        if args.train_percentage is None:
+            if args.train:
+                execute_percentage = 50
+            else:
+                execute_percentage = 100
+        else:
+            execute_percentage = 100-safe_float(args.train_percentage)
+        execute(
+            include_stats=args.include_stats,
+            in_csv=args.in_csv, 
+            out_csv=args.out_csv, 
+            a_header=args.a_header, 
+            b_header=args.b_header, 
+            model=args.model, 
+            execute_percentage=execute_percentage, 
+            verbose=args.verbose,
+        )
+
+
+    if args.gradio:
+        tm = Transmorgrifyer()
+        tm.load( args.model )
+
+        tm.demo( args.share is not None )
 
 
 if __name__ == '__main__':
