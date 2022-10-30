@@ -1,0 +1,47 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },{
+            "name": "Train phonetic 4000 gpu",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--train",
+                "--in_csv", "/home/lansford/Sync/projects/tf_over/sentance_transmogrifier/examples/phonetic/phonetic.csv",
+                "--a_header", "English",
+                "--b_header", "Phonetic",
+                "--device", "0:1",
+                "--model", "phonetics_forwar.tm"
+            ]
+        },{
+            "name": "Train short phonetic 4000 gpu",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--train",
+                "--in_csv", "/home/lansford/Sync/projects/tf_over/sentance_transmogrifier/examples/phonetic/phonetic_short.csv",
+                "--a_header", "English",
+                "--b_header", "Phonetic",
+                "--device", "0:1",
+                "--model", "phonetics_small.tm"
+            ]
+        }
+    ]
+}
