@@ -68,6 +68,8 @@ class Transmorgrifyer:
 
         os.unlink( temp_filename)
 
+        return self
+
     
     def execute( self, from_sentances, verbose=False ):
         for i,from_sentance in enumerate(from_sentances):
