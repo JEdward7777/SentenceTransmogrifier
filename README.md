@@ -13,14 +13,14 @@ license: apache-2.0
 ## Sentance Transmorgrifier
 
 # What is the Sentance Transmorgrifier?
-- The Sentance Transmorgrifier is a generic text to text conversion tool which uses a categorical gradiant boost library, [catboost](https://catboost.ai/), as its back end.
+- The Sentance Transmorgrifier is a framework to make text to text conversion models which uses a categorical gradiant boost library, [catboost](https://catboost.ai/), as its back end.
 - This library does not use neural net or word embeddings but does the transformation on the character level.
 - For Sentance Transmorgrifier to work, there has to be some common characters between the from and two conversion.
 - The model uses a modified form of the [logest common subsequence algorithm](https://en.wikipedia.org/wiki/Longest_common_subsequence_problem) to transform the sentance conversion into a sequence of three types of operations:
   1. Match: Pass the character from input to output
   2. Drop: Remove the incoming character from the input.
   3. Insert: Generate a character and add it to the output.
-- The transformation uses a sliding context window of the next n incoming characters, n output transformed chars and n output untransformed chars.
+- The transformation uses a sliding context window of the next n incoming characters, ``n`` output transformed chars and n output untransformed chars.
 - Because the window is sliding, there is no fixed length on the character sequences which can be transformed.
 
 # How can I use the Sentance Transmorgrifier 
@@ -145,3 +145,5 @@ my_model.load( "my_model.tm" )
 #model returns a generator so wrap it with a list
 results = list( my_model.execute( inference_data["from_header"] ) )
 ```
+# What is the license?
+- The licence has been set to apache-2.0 to match catboost so I don't have to think about compatibility issues.
