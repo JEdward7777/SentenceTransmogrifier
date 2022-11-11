@@ -52,4 +52,8 @@ Select the tab below for a demo.
         pig_in = gr.Textbox( label="Pig latin in" )
         english_out = gr.Textbox( label='English out')
         gr.Button( value='Transmorgrify' ).click( pig_to_eng , pig_in, english_out )
+
+    with open( "README.md" ) as readme_in:
+        gr.Markdown( readme_in.read() )
+
 demo.launch()

@@ -23,6 +23,10 @@ license: apache-2.0
 - The transformation uses a sliding context window of the next n incoming characters, ``n`` output transformed chars and n output untransformed chars.
 - Because the window is sliding, there is no fixed length on the character sequences which can be transformed.
 
+# Where is the code and a demo of said Sentance Transmorgrifier?
+- There is a [Sentance Transmorgrifier HuggingFace space](https://huggingface.co/spaces/JEdward7777/SentanceTransmorgrifier) demoing a couple models created with Sentance Transmorgrifier.
+- A branch of the code without the trained example models is checked in at the [Sentance Transmorgrifier Github page](https://github.com/JEdward7777/SentanceTransmogrifier).
+
 # How can I use the Sentance Transmorgrifier 
 - The project has been configured to be able to be used in two different ways.
 
