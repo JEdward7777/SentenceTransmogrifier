@@ -44,7 +44,7 @@ Select the tab below for a demo.
         english_out = gr.Textbox( label='English out')
         gr.Button( value='Transmorgrify' ).click( ipa_to_eng , ipa_in, english_out )
 
-    with gr.Tab( "Piglattin" ):
+    with gr.Tab( "Pig latin" ):
         english_in = gr.Textbox( label="English in" )
         pig_out = gr.Textbox( label='Pig latin out')
         gr.Button( value='Transmorgrify' ).click( eng_to_pig, english_in, pig_out )
