@@ -14,8 +14,20 @@ START = 3
 
 FILE_VERSION = 1
 
-class Transmorgrifyer:
-    def train( self, from_sentances, to_sentances, iterations, device, trailing_context, leading_context, verbose ):
+class Transmorgrifier:
+    def train( self, from_sentances, to_sentances, iterations = 4000, device = 'cpu', trailing_context = 7, leading_context = 7, verbose=True ):
+        """
+        Train the Transmorgrifier model.  This does not save it to disk but just trains in memory.
+
+        Keyword arguments:
+        from_sentances -- An array of strings for the input sentances.
+        to_sentances -- An array of strings of the same length as from_sentances which the model is to train to convert to.
+        iterations -- An integer specifying the number of iterations to convert from or to. (default 4000)
+        device -- The gpu reference which catboost wants or "cpu". (default cpu)
+        trailing_context -- The number of characters after the action point to include for context. (default 7)
+        leading_context -- The number of characters before the action point to include for context. (default 7)
+        verbose -- Increased the amount of text output during training. (default True)
+        """
         X,Y = _parse_for_training( from_sentances, to_sentances, num_pre_context_chars=leading_context, num_post_context_chars=trailing_context )
 
         #train and save the action_model
@@ -30,7 +42,15 @@ class Transmorgrifyer:
         self.leading_context = leading_context
         self.iterations = iterations
 
-    def save( self, model ):
+        return self
+
+    def save( self, model='my_model.tm' ):
+        """
+        Saves the model previously trained with train to a specified model file.
+        
+        Keyword arguments:
+        model -- The pathname to save the model such as "my_model.tm" (default my_model.tm)
+        """
         self.name = model
         with zipfile.ZipFile( model, mode="w", compression=zipfile.ZIP_DEFLATED, compresslevel=9 ) as myzip:
             with myzip.open( 'params.json', mode='w' ) as out:
@@ -47,7 +67,15 @@ class Transmorgrifyer:
             myzip.write( temp_filename,   "char.cb" )
             os.unlink( temp_filename )
 
-    def load( self, model ):
+        return self
+
+    def load( self, model='my_model.tm' ):
+        """
+        Loads the model previously saved from the file system.
+
+        Keyword arguments:
+        model -- The filename of the model to load. (default my_model.tm)
+        """
         self.name = model
         with zipfile.ZipFile( model, mode='r' ) as zip:
             with zip.open( 'params.json' ) as fin:
@@ -72,6 +100,14 @@ class Transmorgrifyer:
 
     
     def execute( self, from_sentances, verbose=False ):
+        """
+        Runs the data from from_sentaces.  The results are returned 
+        using yield so you need to wrap this in list() if you want 
+        to index it.  from_sentances can be an array or a generator.
+
+        Keyword arguments:
+        from_sentances -- Something iterable which returns strings.
+        """
         for i,from_sentance in enumerate(from_sentances):
 
             yield _do_reconstruct( 
@@ -469,7 +505,7 @@ def train( in_csv, a_header, b_header, model, iterations, device, leading_contex
     if verbose: print( "parcing data for training" )
 
 
-    tm = Transmorgrifyer()
+    tm = Transmorgrifier()
 
     tm.train( from_sentances=train_data[a_header], 
             to_sentances=train_data[b_header], 
@@ -490,7 +526,7 @@ def execute( include_stats, in_csv, out_csv, a_header, b_header, model, execute_
     execute_data = full_data.iloc[split_index:,:].reset_index(drop=True)
 
 
-    tm = Transmorgrifyer()
+    tm = Transmorgrifier()
     tm.load( model )
 
     results = list(tm.execute( execute_data[a_header ], verbose=verbose ))
@@ -601,7 +637,7 @@ def main():
 
 
     if args.gradio:
-        tm = Transmorgrifyer()
+        tm = Transmorgrifier()
         tm.load( args.model )
 
         tm.demo( args.share is not None )

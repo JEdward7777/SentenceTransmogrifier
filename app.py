@@ -1,16 +1,16 @@
 import gradio as gr
 import transmorgrify
 
-eng_to_ipa_tm = transmorgrify.Transmorgrifyer()
+eng_to_ipa_tm = transmorgrify.Transmorgrifier()
 eng_to_ipa_tm.load( "./examples/phonetic/phonetics_gpu_4000.tm" )
 
-ipa_to_eng_tm = transmorgrify.Transmorgrifyer()
+ipa_to_eng_tm = transmorgrify.Transmorgrifier()
 ipa_to_eng_tm.load( "./examples/phonetic/reverse_phonetics_gpu_4000.tm")
 
-eng_to_pig_tm = transmorgrify.Transmorgrifyer()
+eng_to_pig_tm = transmorgrify.Transmorgrifier()
 eng_to_pig_tm.load( "./examples/piglattin/piglattin_gpu_4000.tm" )
 
-pig_to_eng_tm = transmorgrify.Transmorgrifyer()
+pig_to_eng_tm = transmorgrify.Transmorgrifier()
 pig_to_eng_tm.load( "./examples/piglattin/reverse_piglattin_gpu_4000.tm" )
 
 
