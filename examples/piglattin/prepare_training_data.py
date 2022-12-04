@@ -39,7 +39,7 @@ def english_to_piglattin( english ):
                 else:
                     piglattin += "yay" + char
     
-    #end of sentance needs done as well.
+    #end of sentence needs done as well.
     if in_word:
         if start:
             piglattin += start.lower() + "ay"

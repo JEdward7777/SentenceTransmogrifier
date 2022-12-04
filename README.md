@@ -1,5 +1,5 @@
 ---
-title: Sentance Transmorgrifier
+title: Sentence Transmorgrifier
 emoji: s
 colorFrom: yellow
 colorTo: yellow
@@ -10,24 +10,24 @@ pinned: false
 license: apache-2.0
 ---
 
-## Sentance Transmorgrifier
+## Sentence Transmorgrifier
 
-# What is the Sentance Transmorgrifier?
-- The Sentance Transmorgrifier is a framework to make text to text conversion models which uses a categorical gradiant boost library, [catboost](https://catboost.ai/), as its back end.
+# What is the Sentence Transmorgrifier?
+- The Sentence Transmorgrifier is a framework to make text to text conversion models which uses a categorical gradiant boost library, [catboost](https://catboost.ai/), as its back end.
 - This library does not use neural net or word embeddings but does the transformation on the character level.
-- For Sentance Transmorgrifier to work, there has to be some common characters between the from and two conversion.
-- The model uses a modified form of the [logest common subsequence algorithm](https://en.wikipedia.org/wiki/Longest_common_subsequence_problem) to transform the sentance conversion into a sequence of three types of operations:
+- For Sentence Transmorgrifier to work, there has to be some common characters between the from and two conversion.
+- The model uses a modified form of the [logest common subsequence algorithm](https://en.wikipedia.org/wiki/Longest_common_subsequence_problem) to transform the sentence conversion into a sequence of three types of operations:
   1. Match: Pass the character from input to output
   2. Drop: Remove the incoming character from the input.
   3. Insert: Generate a character and add it to the output.
 - The transformation uses a sliding context window of the next n incoming characters, ``n`` output transformed chars and n output untransformed chars.
 - Because the window is sliding, there is no fixed length on the character sequences which can be transformed.
 
-# Where is the code and a demo of said Sentance Transmorgrifier?
-- There is a [Sentance Transmorgrifier HuggingFace space](https://huggingface.co/spaces/JEdward7777/SentanceTransmorgrifier) demoing a couple models created with Sentance Transmorgrifier.
-- A branch of the code without the trained example models is checked in at the [Sentance Transmorgrifier Github page](https://github.com/JEdward7777/SentanceTransmogrifier).
+# Where is the code and a demo of said Sentence Transmorgrifier?
+- There is a [Sentence Transmorgrifier HuggingFace space](https://huggingface.co/spaces/JEdward7777/SentenceTransmorgrifier) demoing a couple models created with Sentence Transmorgrifier.
+- A branch of the code without the trained example models is checked in at the [Sentence Transmorgrifier Github page](https://github.com/JEdward7777/SentenceTransmogrifier).
 
-# How can I use the Sentance Transmorgrifier 
+# How can I use the Sentence Transmorgrifier 
 - The project has been configured to be able to be used in two different ways.
 
 ## Shell access
@@ -35,7 +35,7 @@ license: apache-2.0
 
 ```sh
 python transmorgrify.py \
-    --train --in_csv /home/lansford/Sync/projects/tf_over/sentance_transmogrifier/examples/phonetic/phonetic.csv \
+    --train --in_csv ./examples/phonetic/phonetic.csv \
      --a_header English \
      --b_header Phonetic\
      --device 0:1 \
@@ -56,7 +56,7 @@ python transmorgrify.py \
 ```sh
 python transmorgrify.py \
     --execute \
-    --in_csv /home/lansford/Sync/projects/tf_over/sentance_transmogrifier/examples/phonetic/phonetic.csv \
+    --in_csv ./examples/phonetic/phonetic.csv \
     --a_header English \
     --b_header Phonetic\
     --device cpu \
@@ -83,8 +83,8 @@ python transmorgrify.py \
 Train the Transmorgrifier model.  This does not save it to disk but just trains in memory.
 
 Keyword arguments:
-from_sentances -- An array of strings for the input sentances.
-to_sentances -- An array of strings of the same length as from_sentances which the model is to train to convert to.
+from_sentences -- An array of strings for the input sentences.
+to_sentences -- An array of strings of the same length as from_sentences which the model is to train to convert to.
 iterations -- An integer specifying the number of iterations to convert from or to. (default 4000)
 device -- The gpu reference which catboost wants or "cpu". (default cpu)
 trailing_context -- The number of characters after the action point to include for context. (default 7)
@@ -109,10 +109,10 @@ model -- The filename of the model to load. (default my_model.tm)
 ```
 Runs the data from from_sentaces.  The results are returned 
 using yield so you need to wrap this in list() if you want 
-to index it.  from_sentances can be an array or a generator.
+to index it.  from_sentences can be an array or a generator.
 
 Keyword arguments:
-from_sentances -- Something iterable which returns strings.
+from_sentences -- Something iterable which returns strings.
 ```
 - Here is an example of using object access to train a model
 ```python
@@ -125,8 +125,8 @@ train_data = pd.read_csv( "training.csv" )
 #do the training
 my_model = transmorgrify.Transmorgrifier()
 my_model.train( 
-    from_sentances=train_data["from_header"], 
-    to_sentances=train_data["to_header"],
+    from_sentences=train_data["from_header"], 
+    to_sentences=train_data["to_header"],
     iterations=4000 )
 
 #save the results

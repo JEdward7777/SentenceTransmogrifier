@@ -15,20 +15,20 @@ START = 3
 FILE_VERSION = 1
 
 class Transmorgrifier:
-    def train( self, from_sentances, to_sentances, iterations = 4000, device = 'cpu', trailing_context = 7, leading_context = 7, verbose=True ):
+    def train( self, from_sentences, to_sentences, iterations = 4000, device = 'cpu', trailing_context = 7, leading_context = 7, verbose=True ):
         """
         Train the Transmorgrifier model.  This does not save it to disk but just trains in memory.
 
         Keyword arguments:
-        from_sentances -- An array of strings for the input sentances.
-        to_sentances -- An array of strings of the same length as from_sentances which the model is to train to convert to.
+        from_sentences -- An array of strings for the input sentences.
+        to_sentences -- An array of strings of the same length as from_sentences which the model is to train to convert to.
         iterations -- An integer specifying the number of iterations to convert from or to. (default 4000)
         device -- The gpu reference which catboost wants or "cpu". (default cpu)
         trailing_context -- The number of characters after the action point to include for context. (default 7)
         leading_context -- The number of characters before the action point to include for context. (default 7)
         verbose -- Increased the amount of text output during training. (default True)
         """
-        X,Y = _parse_for_training( from_sentances, to_sentances, num_pre_context_chars=leading_context, num_post_context_chars=trailing_context )
+        X,Y = _parse_for_training( from_sentences, to_sentences, num_pre_context_chars=leading_context, num_post_context_chars=trailing_context )
 
         #train and save the action_model
         self.action_model = _train_catboost( X, Y['action'], iterations, verbose=verbose, device=device, model_piece='action' )
@@ -99,25 +99,25 @@ class Transmorgrifier:
         return self
 
     
-    def execute( self, from_sentances, verbose=False ):
+    def execute( self, from_sentences, verbose=False ):
         """
         Runs the data from from_sentaces.  The results are returned 
         using yield so you need to wrap this in list() if you want 
-        to index it.  from_sentances can be an array or a generator.
+        to index it.  from_sentences can be an array or a generator.
 
         Keyword arguments:
-        from_sentances -- Something iterable which returns strings.
+        from_sentences -- Something iterable which returns strings.
         """
-        for i,from_sentance in enumerate(from_sentances):
+        for i,from_sentence in enumerate(from_sentences):
 
             yield _do_reconstruct( 
                 action_model=self.action_model, 
                 char_model=self.char_model, 
-                text=from_sentance, 
+                text=from_sentence, 
                 num_pre_context_chars=self.leading_context, 
                 num_post_context_chars=self.trailing_context  )
             if verbose and i % 10 == 0:
-                print( f"{i} of {len(from_sentances)}" )
+                print( f"{i} of {len(from_sentences)}" )
 
     def demo( self, share=False ):
         import gradio as gr 
@@ -162,7 +162,7 @@ class _edit_trace_hop():
     def __repr__( self ):
         return self.__str__()
 
-def _trace_edits( from_sentance, to_sentance, print_debug=False ):
+def _trace_edits( from_sentence, to_sentence, print_debug=False ):
     #iterating from will be the rows down the left side.
     #iterating to will be the columns across the top.
     #we will keep one row as we work on the next.
@@ -173,9 +173,9 @@ def _trace_edits( from_sentance, to_sentance, print_debug=False ):
     #the index handles one before the index in the string
     #to handle the root cases across the top and down the left of the
     #match matrix.
-    for from_row_i in range( len(from_sentance)+1 ):
+    for from_row_i in range( len(from_sentence)+1 ):
 
-        for to_column_i in range( len(to_sentance )+1 ):
+        for to_column_i in range( len(to_sentence )+1 ):
 
             best_option = None
 
@@ -195,7 +195,7 @@ def _trace_edits( from_sentance, to_sentance, print_debug=False ):
                     best_option = _edit_trace_hop()
                     best_option.parrent = current_row[to_column_i-1]
                     best_option.edit_distance = best_option.parrent.edit_distance + 1
-                    best_option.char = to_sentance[to_column_i-1]
+                    best_option.char = to_sentence[to_column_i-1]
                     best_option.from_row_i = from_row_i
                     best_option.to_column_i = to_column_i
                     best_option.action = INSERT_TO
@@ -206,19 +206,19 @@ def _trace_edits( from_sentance, to_sentance, print_debug=False ):
                     best_option = _edit_trace_hop()
                     best_option.parrent = last_row[to_column_i]
                     best_option.edit_distance = best_option.parrent.edit_distance + 1
-                    best_option.char = from_sentance[from_row_i-1]
+                    best_option.char = from_sentence[from_row_i-1]
                     best_option.from_row_i = from_row_i
                     best_option.to_column_i = to_column_i
                     best_option.action = DELETE_FROM
 
                 #check match
                 if to_column_i > 0:
-                    if to_sentance[to_column_i-1] == from_sentance[from_row_i-1]:
+                    if to_sentence[to_column_i-1] == from_sentence[from_row_i-1]:
                         if best_option is None or last_row[to_column_i-1].edit_distance <= best_option.edit_distance: #prefer match so use <= than <
                             best_option = _edit_trace_hop()
                             best_option.parrent = last_row[to_column_i-1]
                             best_option.edit_distance = best_option.parrent.edit_distance + 1
-                            best_option.char = from_sentance[from_row_i-1]
+                            best_option.char = from_sentence[from_row_i-1]
                             best_option.from_row_i = from_row_i
                             best_option.to_column_i = to_column_i
                             best_option.action = MATCH
@@ -246,8 +246,8 @@ def _trace_edits( from_sentance, to_sentance, print_debug=False ):
     return last_row[-1]
 
 
-def _parse_single_for_training( from_sentance, to_sentance, num_pre_context_chars, num_post_context_chars ):
-    trace = _trace_edits( from_sentance, to_sentance )
+def _parse_single_for_training( from_sentence, to_sentence, num_pre_context_chars, num_post_context_chars ):
+    trace = _trace_edits( from_sentence, to_sentence )
 
     #we will collect a snapshot at each step.
     trace_list = _list_trace(trace)
@@ -255,8 +255,8 @@ def _parse_single_for_training( from_sentance, to_sentance, num_pre_context_char
 
     training_collection = []
 
-    #execute these things on the from_sentance and see if we get the to_sentance.
-    working_from = from_sentance
+    #execute these things on the from_sentence and see if we get the to_sentence.
+    working_from = from_sentence
     working_to = ""
     used_from = ""
     continuous_added = 0
@@ -298,7 +298,7 @@ def _parse_single_for_training( from_sentance, to_sentance, num_pre_context_char
             continuous_dropped = 0
 
     
-    if to_sentance != working_to:
+    if to_sentence != working_to:
         print( "Replay failure" )
 
     #so now I have training_collection which is a list of dictionaries where each dictionary is an action with a context.
@@ -348,18 +348,18 @@ def _parse_single_for_training( from_sentance, to_sentance, num_pre_context_char
     return pd.DataFrame( context_split_into_dict ), pd.DataFrame( result_split_into_dict )
 
 
-def _parse_for_training( from_sentances, to_sentances, num_pre_context_chars, num_post_context_chars ):
+def _parse_for_training( from_sentences, to_sentences, num_pre_context_chars, num_post_context_chars ):
     out_observations_list = []
     out_results_list = []
 
-    for index, (from_sentance, to_sentance) in enumerate(zip( from_sentances, to_sentances )):
-        if type(from_sentance) != float and type(to_sentance) != float: #bad lines are nan which are floats.
-            specific_observation, specific_result = _parse_single_for_training( from_sentance, to_sentance, num_pre_context_chars=num_pre_context_chars, num_post_context_chars=num_post_context_chars )
+    for index, (from_sentence, to_sentence) in enumerate(zip( from_sentences, to_sentences )):
+        if type(from_sentence) != float and type(to_sentence) != float: #bad lines are nan which are floats.
+            specific_observation, specific_result = _parse_single_for_training( from_sentence, to_sentence, num_pre_context_chars=num_pre_context_chars, num_post_context_chars=num_post_context_chars )
 
             out_observations_list.append( specific_observation )
             out_results_list.append( specific_result )
         if index % 100 == 0:
-            print( f"parsing {index} of {len(from_sentances)}")
+            print( f"parsing {index} of {len(from_sentences)}")
 
     return pd.concat( out_observations_list ), pd.concat( out_results_list )
 
@@ -507,8 +507,8 @@ def train( in_csv, a_header, b_header, model, iterations, device, leading_contex
 
     tm = Transmorgrifier()
 
-    tm.train( from_sentances=train_data[a_header], 
-            to_sentances=train_data[b_header], 
+    tm.train( from_sentences=train_data[a_header], 
+            to_sentences=train_data[b_header], 
             iterations = iterations,
             device = device,
             leading_context = leading_context, 

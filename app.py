@@ -29,7 +29,7 @@ def pig_to_eng( input ):
 with gr.Blocks() as demo:
     gr.Markdown(
 """
-# Sentance Transmorgrifier demo
+# Sentence Transmorgrifier demo
 The following demos have been trained on different tasks.
 Select the tab below for a demo.
 """
