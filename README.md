@@ -1,6 +1,5 @@
 ---
 title: Sentence Transmorgrifier
-emoji: s
 colorFrom: yellow
 colorTo: yellow
 sdk: gradio
