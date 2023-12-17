@@ -371,7 +371,7 @@ def _train_catboost( X, y, iterations, device, verbose, model_piece, learning_ra
         train_pool = Pool(
             data=X,
             label=y,
-            cat_features=[i for i,x in enumerate(X.keys()) if len(x) == 2] #all cat keys are length 2
+            cat_features=[i for i,x in enumerate(X.keys()) if x[0] in ['f','t','u']] #watchout if another field is added that it doesn't start with one of these.
         )
         validation_pool = None #Can't use validation pool because it randomly has chars not in training.
         model = CatBoostClassifier(
@@ -452,6 +452,11 @@ def _do_reconstruct( action_model, char_model, text, num_pre_context_chars, num_
 
         #run the model
         action_model_result = action_model.predict( context_as_pd )[0][0]
+
+        #stop run away.  If we have added more chars then our context, nothing is going to change.
+        if action_model_result == INSERT_TO and continuous_added >= num_post_context_chars:
+            #I can set this to MATCH or DELETE_FROM, but it is already a wreck, lets just see what happens with this.
+            action_model_result = MATCH
 
         if action_model_result == START:
             pass
@@ -583,7 +588,7 @@ def main():
     parser.add_argument('-b', '--b_header',   help='The column header for training the transformation to', default="target"  )
     parser.add_argument('-m', '--model',help='The model file to create during training or use during transformation', default='model.tm' )
     parser.add_argument('-n', '--iterations', help='The number of iterations to train', default=2000 )
-    parser.add_argument('-d', '--device',  help='Which device, i.e. if useing GPU', default='cpu' )
+    parser.add_argument('-d', '--device',  help='Which device, i.e. if using GPU', default='cpu' )
     parser.add_argument('-x', '--context', help='The number of leading and trailing chars to use as context', default=7 )
     parser.add_argument('-p', '--train_percentage', help="The percentage of data to train on, leaving the rest for testing.")
     parser.add_argument('-v', '--verbose', action='store_true', help='Talks alot?' )
