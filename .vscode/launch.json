@@ -13,6 +13,221 @@
             "console": "integratedTerminal",
             "justMyCode": true
         },{
+            "name": "Train \"latin\" 4000",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--train",
+                "--in_csv", "./examples/latin/training_latin.txt",
+                "--a_header", "original",
+                "--b_header", "split",
+                "--device", "0:1",
+                "--model", "latin_forward.tm",
+                "--train_percentage", "50",
+            ]
+        },{
+            "name": "Train \"latin\" 100",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--train",
+                "--in_csv", "./examples/latin/training_latin.txt",
+                "--a_header", "original",
+                "--b_header", "split",
+                "--device", "0:1",
+                "--model", "latin_forward_100.tm",
+                "-n", "100",
+                "--train_percentage", "50",
+            ]
+        },{
+            "name": "Train \"latin\" 10000",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--train",
+                "--in_csv", "./examples/latin/training_latin.txt",
+                "--a_header", "original",
+                "--b_header", "split",
+                "--device", "0:1",
+                "--model", "latin_forward_10000.tm",
+                "-n", "10000",
+                "--train_percentage", "50",
+            ]
+        },{
+            "name": "Execute \"latin\" 4000",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--execute",
+                "--in_csv", "./examples/latin/training_latin.txt",
+                "--a_header", "original",
+                "--b_header", "split",
+                "--device", "0:1",
+                "--model", "latin_forward.tm",
+                "--verbose",
+                "--include_stats",
+                "--out_csv", "latin_4000.csv",
+                "--train_percentage", "50",
+            ]
+        },{
+            "name": "Execute \"latin\" 100",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--execute",
+                "--in_csv", "./examples/latin/training_latin.txt",
+                "--a_header", "original",
+                "--b_header", "split",
+                "--device", "0:1",
+                "--model", "latin_forward_100.tm",
+                "--verbose",
+                "--include_stats",
+                "--out_csv", "latin_100.csv",
+                "--train_percentage", "50",
+            ]
+        },{
+            "name": "Execute \"latin\" 10000",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--execute",
+                "--in_csv", "./examples/latin/training_latin.txt",
+                "--a_header", "original",
+                "--b_header", "split",
+                "--device", "0:1",
+                "--model", "latin_forward_10000.tm",
+                "--verbose",
+                "--include_stats",
+                "--out_csv", "latin_10000.csv",
+                "--train_percentage", "50",
+            ]
+        },{
+            "name": "Demo \"latin\" 4000",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--gradio",
+                "--in_csv", "./examples/latin/training_latin.txt",
+                "--a_header", "original",
+                //"--b_header", "split",
+                //"--device", "0:1",
+                "--model", "latin_forward.tm"
+            ]
+        },{
+            "name": "Demo \"latin\" 100",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--gradio",
+                "--in_csv", "./examples/latin/training_latin.txt",
+                "--a_header", "original",
+                //"--b_header", "split",
+                //"--device", "0:1",
+                "--model", "latin_forward_100.tm"
+            ]
+        },{
+            "name": "Demo \"latin\" 10000",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--gradio",
+                "--in_csv", "./examples/latin/training_latin.txt",
+                "--a_header", "original",
+                //"--b_header", "split",
+                //"--device", "0:1",
+                "--model", "latin_forward_10000.tm"
+            ]
+        },{
+            "name": "Train \"latin\" mod",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--train",
+                "--in_csv", "./examples/latin/training_latin_mod.csv",
+                "--a_header", "original",
+                "--b_header", "split",
+                "--device", "0:1",
+                "--model", "latin_mod_forward.tm"
+            ]
+        },{
+            "name": "Execute \"latin\" mod",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--execute",
+                "--in_csv", "./examples/latin/training_latin_mod.csv",
+                "--a_header", "original",
+                //"--b_header", "split",
+                "--device", "0:1",
+                "--model", "latin_mod_forward.tm",
+                "--out_csv", "latin_mod_out.csv",
+            ]
+        },{
+            "name": "Execute mixup",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--execute",
+                "--in_csv", "./examples/latin/training_latin_mod.csv",
+                "--a_header", "original",
+                //"--b_header", "split",
+                "--device", "0:1",
+                //"--model", "latin_mod_forward.tm",
+                "--model", "phonetics_small.tm",
+                "--out_csv", "mixum_out.csv",
+            ]
+        },{
+            "name": "Demo \"latin\" mod",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--gradio",
+                "--in_csv", "./examples/latin/training_latin_mod.csv",
+                "--a_header", "original",
+                //"--b_header", "split",
+                //"--device", "0:1",
+                "--model", "latin_mod_forward.tm"
+            ]
+        },{
             "name": "Train phonetic 4000 gpu",
             "type": "python",
             "request": "launch",
@@ -21,27 +236,27 @@
             "justMyCode": true,
             "args": [
                 "--train",
-                "--in_csv", "/home/lansford/Sync/projects/tf_over/sentence_transmogrifier/examples/phonetic/phonetic.csv",
+                "--in_csv", "./examples/phonetic/phonetic.csv",
                 "--a_header", "English",
                 "--b_header", "Phonetic",
                 "--device", "0:1",
                 "--model", "phonetics_forward.tm"
             ]
-            },{
-                "name": "Train reverse phonetic 4000 gpu",
-                "type": "python",
-                "request": "launch",
-                "program": "transmorgrify.py",
-                "console": "integratedTerminal",
-                "justMyCode": true,
-                "args": [
-                    "--train",
-                    "--in_csv", "/home/lansford/Sync/projects/tf_over/sentence_transmogrifier/examples/phonetic/phonetic.csv",
-                    "--b_header", "English",
-                    "--a_header", "Phonetic",
-                    "--device", "0:1",
-                    "--model", "phonetics_backwards.tm"
-                ]
+        },{
+            "name": "Train reverse phonetic 4000 gpu",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--train",
+                "--in_csv", "./examples/phonetic/phonetic.csv",
+                "--b_header", "English",
+                "--a_header", "Phonetic",
+                "--device", "0:1",
+                "--model", "phonetics_backwards.tm"
+            ]
         },{
             "name": "Train short phonetic 4000 gpu",
             "type": "python",
@@ -51,10 +266,11 @@
             "justMyCode": true,
             "args": [
                 "--train",
-                "--in_csv", "/home/lansford/Sync/projects/tf_over/sentence_transmogrifier/examples/phonetic/phonetic_short.csv",
+                "--in_csv", "./examples/phonetic/phonetic_short.csv",
                 "--a_header", "English",
                 "--b_header", "Phonetic",
                 "--device", "0:1",
+                "-n", "100",
                 "--model", "phonetics_small.tm"
             ]
         },{
@@ -66,45 +282,26 @@
             "justMyCode": true,
             "args": [
                 "--execute",
-                "--in_csv", "/home/lansford/Sync/projects/tf_over/sentence_transmogrifier/examples/phonetic/phonetic.csv",
+                "--in_csv", "./examples/phonetic/phonetic.csv",
+                "--a_header", "original",
+                //"--b_header", "split",
+                "--verbose",
+            ]
+        },{
+            "name": "Execute short phonetic",
+            "type": "python",
+            "request": "launch",
+            "program": "transmorgrify.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--execute",
+                "--in_csv", "./examples/phonetic/phonetic_short.csv",
                 "--out_csv", "./phonetic_out.csv",
                 "--a_header", "English",
                 "--b_header", "Phonetic",
+                "--model", "phonetics_small.tm",
                 "--device", "0:1",
-                "--model", "phonetics_forward.tm",
-                "--verbose",
-            ]
-        },{
-            "name": "short Execute phonetic",
-            "type": "python",
-            "request": "launch",
-            "program": "transmorgrify.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
-                "--execute",
-                "--in_csv", "/home/lansford/Sync/projects/tf_over/sentence_transmogrifier/examples/phonetic/phonetic_short.csv",
-                "--out_csv", "./phonetic_out.csv",
-                "--a_header", "English",
-                "--b_header", "Phonetic",
-                "--model", "phonetics_forward.tm",
-                "--verbose",
-                "--include_stats",
-            ]
-        },{
-            "name": "short Execute reverse phonetic",
-            "type": "python",
-            "request": "launch",
-            "program": "transmorgrify.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
-                "--execute",
-                "--in_csv", "/home/lansford/Sync/projects/tf_over/sentence_transmogrifier/examples/phonetic/phonetic_short.csv",
-                "--out_csv", "./reverse_phonetic_out.csv",
-                "--b_header", "English",
-                "--a_header", "Phonetic",
-                "--model", "phonetics_backwards.tm",
                 "--verbose",
                 "--include_stats",
             ]

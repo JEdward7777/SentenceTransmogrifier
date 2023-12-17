@@ -36,7 +36,21 @@ class Transmorgrifier:
         #and the char model
         #slice through where only the action is insert.
         insert_indexes = Y['action'] == INSERT_TO
-        self.char_model = _train_catboost( X[insert_indexes], Y['char'][insert_indexes], iterations, verbose=verbose, device=device, model_piece='char' )
+
+        #if there is only one char to insert, we can't train the second model and need to handle that as a boundary case.
+        if Y['char'][insert_indexes].nunique() > 1:
+            self.char_model = _train_catboost( X[insert_indexes], Y['char'][insert_indexes], iterations, verbose=verbose, device=device, model_piece='char' )
+            self.constant_output = None
+        else:
+            self.char_model = None
+            if Y['char'][insert_indexes].nunique() == 1:
+                self.constant_output = Y['char'][insert_indexes].unique()[0]
+            else:
+                #If there is never an insertion handle it as always inserting a space,
+                #because it will never insert, but it handles the boundary case so the saving and loading code works.
+                self.constant_output = ' '
+            
+
 
         self.trailing_context = trailing_context
         self.leading_context = leading_context
@@ -52,19 +66,24 @@ class Transmorgrifier:
         model -- The pathname to save the model such as "my_model.tm" (default my_model.tm)
         """
         self.name = model
-        with zipfile.ZipFile( model, mode="w", compression=zipfile.ZIP_DEFLATED, compresslevel=9 ) as myzip:
-            with myzip.open( 'params.json', mode='w' ) as out:
-                out.write( json.dumps({
+        with zipfile.ZipFile( model, mode="w", compression=zipfile.ZIP_DEFLATED, compresslevel=9 ) as my_zip:
+            with my_zip.open( 'params.json', mode='w' ) as out:
+                params = {
                     'version': FILE_VERSION,
                     'leading_context': self.leading_context,
                     'trailing_context': self.trailing_context,
                     'iterations': self.iterations,
-                }).encode())
+                }
+                if self.constant_output is not None:
+                    params['constant_output'] = self.constant_output
+
+                out.write( json.dumps(params).encode())
             temp_filename = _mktemp()
             self.action_model.save_model( temp_filename )
-            myzip.write( temp_filename, "action.cb" )
-            self.char_model.save_model( temp_filename )
-            myzip.write( temp_filename,   "char.cb" )
+            my_zip.write( temp_filename, "action.cb" )
+            if not self.char_model is None:
+                self.char_model.save_model( temp_filename )
+                my_zip.write( temp_filename,   "char.cb" )
             os.unlink( temp_filename )
 
         return self
@@ -78,21 +97,26 @@ class Transmorgrifier:
         """
         self.name = model
         with zipfile.ZipFile( model, mode='r' ) as zip:
-            with zip.open( 'params.json' ) as fin:
-                params = json.loads( fin.read().decode() )
+            with zip.open( 'params.json' ) as f_in:
+                params = json.loads( f_in.read().decode() )
                 if params['version'] > FILE_VERSION: raise Exception( f"Version {params['version']} greater than {FILE_VERSION}" )
                 self.leading_context = int(params['leading_context'])
                 self.trailing_context = int(params['trailing_context'])
                 self.iterations = int(params['iterations'])
             temp_filename = _mktemp()
-            with zip.open( 'action.cb' ) as fin:
-                with open( temp_filename, "wb" ) as fout:
-                    fout.write( fin.read() )
+            with zip.open( 'action.cb' ) as f_in:
+                with open( temp_filename, "wb" ) as f_out:
+                    f_out.write( f_in.read() )
             self.action_model = CatBoostClassifier().load_model( temp_filename )
-            with zip.open( 'char.cb' ) as fin:
-                with open( temp_filename, "wb" ) as fout:
-                    fout.write( fin.read() )
-            self.char_model   = CatBoostClassifier().load_model(  temp_filename   )
+            if 'constant_output' not in params:
+                with zip.open( 'char.cb' ) as f_in:
+                    with open( temp_filename, "wb" ) as f_out:
+                        f_out.write( f_in.read() )
+                self.char_model   = CatBoostClassifier().load_model(  temp_filename   )
+                self.constant_output = None
+            else:
+                self.constant_output = params['constant_output']
+                self.char_model = None
 
         os.unlink( temp_filename)
 
@@ -101,7 +125,7 @@ class Transmorgrifier:
     
     def execute( self, from_sentences, verbose=False ):
         """
-        Runs the data from from_sentaces.  The results are returned 
+        Runs the data from from_sentences.  The results are returned 
         using yield so you need to wrap this in list() if you want 
         to index it.  from_sentences can be an array or a generator.
 
@@ -113,6 +137,7 @@ class Transmorgrifier:
             yield _do_reconstruct( 
                 action_model=self.action_model, 
                 char_model=self.char_model, 
+                constant_output=self.constant_output,
                 text=from_sentence, 
                 num_pre_context_chars=self.leading_context, 
                 num_post_context_chars=self.trailing_context  )
@@ -133,15 +158,15 @@ class Transmorgrifier:
         demo.launch( share=share )
 
 def _list_trace( trace ):
-    if trace.parrent is None:
+    if trace.parent is None:
         result = [trace]
     else:
-        result = _list_trace( trace.parrent )
+        result = _list_trace( trace.parent )
         result.append( trace )
     return result
 
 class _edit_trace_hop():
-    parrent = None
+    parent = None
     edit_distance = None
     char = None
     from_row_i = None
@@ -182,7 +207,7 @@ def _trace_edits( from_sentence, to_sentence, print_debug=False ):
             #root case.
             if from_row_i == 0 and to_column_i == 0:
                 best_option = _edit_trace_hop()
-                best_option.parrent = None
+                best_option.parent = None
                 best_option.edit_distance = 0
                 best_option.char = ""
                 best_option.from_row_i = from_row_i
@@ -193,8 +218,8 @@ def _trace_edits( from_sentence, to_sentence, print_debug=False ):
             if to_column_i > 0:
                 if best_option is None or current_row[to_column_i-1].edit_distance + 1 < best_option.edit_distance:
                     best_option = _edit_trace_hop()
-                    best_option.parrent = current_row[to_column_i-1]
-                    best_option.edit_distance = best_option.parrent.edit_distance + 1
+                    best_option.parent = current_row[to_column_i-1]
+                    best_option.edit_distance = best_option.parent.edit_distance + 1
                     best_option.char = to_sentence[to_column_i-1]
                     best_option.from_row_i = from_row_i
                     best_option.to_column_i = to_column_i
@@ -204,8 +229,8 @@ def _trace_edits( from_sentence, to_sentence, print_debug=False ):
             if from_row_i > 0:
                 if best_option is None or last_row[to_column_i].edit_distance + 1 < best_option.edit_distance:
                     best_option = _edit_trace_hop()
-                    best_option.parrent = last_row[to_column_i]
-                    best_option.edit_distance = best_option.parrent.edit_distance + 1
+                    best_option.parent = last_row[to_column_i]
+                    best_option.edit_distance = best_option.parent.edit_distance + 1
                     best_option.char = from_sentence[from_row_i-1]
                     best_option.from_row_i = from_row_i
                     best_option.to_column_i = to_column_i
@@ -216,8 +241,8 @@ def _trace_edits( from_sentence, to_sentence, print_debug=False ):
                     if to_sentence[to_column_i-1] == from_sentence[from_row_i-1]:
                         if best_option is None or last_row[to_column_i-1].edit_distance <= best_option.edit_distance: #prefer match so use <= than <
                             best_option = _edit_trace_hop()
-                            best_option.parrent = last_row[to_column_i-1]
-                            best_option.edit_distance = best_option.parrent.edit_distance + 1
+                            best_option.parent = last_row[to_column_i-1]
+                            best_option.edit_distance = best_option.parent.edit_distance + 1
                             best_option.char = from_sentence[from_row_i-1]
                             best_option.from_row_i = from_row_i
                             best_option.to_column_i = to_column_i
@@ -231,8 +256,8 @@ def _trace_edits( from_sentence, to_sentence, print_debug=False ):
 
     if print_debug:
         def print_diffs( current_node ):
-            if current_node.parrent is not None:
-                print_diffs( current_node.parrent )
+            if current_node.parent is not None:
+                print_diffs( current_node.parent )
             
             if current_node.action == START:
                 print( "start" )
@@ -344,7 +369,7 @@ def _parse_single_for_training( from_sentence, to_sentence, num_pre_context_char
     result_split_into_dict['action'] = action_slice
     result_split_into_dict['char']   = char_slice
         
-    #now return it as a dataframe.
+    #now return it as a data_frame.
     return pd.DataFrame( context_split_into_dict ), pd.DataFrame( result_split_into_dict )
 
 
@@ -391,8 +416,8 @@ def _train_catboost( X, y, iterations, device, verbose, model_piece, learning_ra
 
 
 def _mktemp():
-    #I know mktemp exists in the library but it has been depricated suggesting using
-    #mkstemp but catboost can't write to a filehandle yet, so I need an actual
+    #I know mktemp exists in the library but it has been deprecated suggesting using
+    #mkstemp but catboost can't write to a file handle yet, so I need an actual
     #filename.
     number = 0
     while os.path.exists( f".temp_{number}~" ):
@@ -400,24 +425,21 @@ def _mktemp():
     return f".temp_{number}~"
 
 
-def _do_reconstruct( action_model, char_model, text, num_pre_context_chars, num_post_context_chars  ):
-    # result = ""
-    # for i in range(len(text)):
-    #     pre_context = ( (" " * num_pre_context_chars) + result[max(0,len(result)-num_pre_context_chars):])[-num_pre_context_chars:]
-    #     post_context = (text[i:min(len(text),i+num_post_context_chars)] + (" " * num_post_context_chars))[:num_post_context_chars]
-    #     full_context = pre_context + post_context
-    #     context_as_dictionary = { 'c'+str(c):[full_context[c]] for c in range(len(full_context)) }
-    #     context_as_pd = pd.DataFrame( context_as_dictionary )
+def predict_wrapper( model, model_input ):
+    #Big hack.  Catboost has shown itself to be unstable on producing
+    #either a single value or an array with a single value in it.
+    #I traced it back to the saved model, and then the model to what
+    #data it is trained on.  But I could figure out what it was
+    #in the data which would make the saved model be one way or the other
+    #so I am going to use the results this way so that it works either way.
+    result = model.predict( model_input )[0]
+    try:
+        result = result[0]
+    except:
+        pass
+    return result
 
-    #     model_result = model.predict( context_as_pd )[0]
-
-    #     if not quite and len( result ) % 500 == 0: print( "%" + str(i*100/len(text))[:4] + " " + result[-100:])
-
-    #     if model_result: result += " "
-    #     result += text[i]
-
-    #     pass
-    # return result
+def _do_reconstruct( action_model, char_model, constant_output, text, num_pre_context_chars, num_post_context_chars  ):
 
     #test for nan.
     if text != text: text = ''
@@ -451,7 +473,7 @@ def _do_reconstruct( action_model, char_model, text, num_pre_context_chars, num_
         context_as_pd = pd.DataFrame( context_as_dictionary )
 
         #run the model
-        action_model_result = action_model.predict( context_as_pd )[0][0]
+        action_model_result = predict_wrapper(action_model,context_as_pd )
 
         #stop run away.  If we have added more chars then our context, nothing is going to change.
         if action_model_result == INSERT_TO and continuous_added >= num_post_context_chars:
@@ -461,8 +483,11 @@ def _do_reconstruct( action_model, char_model, text, num_pre_context_chars, num_
         if action_model_result == START:
             pass
         elif action_model_result == INSERT_TO:
-            #for an insert ask the char model what to insert
-            char_model_result = char_model.predict( context_as_pd )[0][0]
+            if constant_output is None:
+                #for an insert ask the char model what to insert
+                char_model_result = predict_wrapper(char_model, context_as_pd )
+            else:
+                char_model_result = constant_output
 
             working_to += char_model_result
             continuous_added += 1
@@ -507,7 +532,7 @@ def train( in_csv, a_header, b_header, model, iterations, device, leading_contex
     split_index = int( train_percentage/100*len(full_data) )
     train_data = full_data.iloc[:split_index,:].reset_index(drop=True)
 
-    if verbose: print( "parcing data for training" )
+    if verbose: print( "parsing data for training" )
 
 
     tm = Transmorgrifier()
@@ -645,7 +670,7 @@ def main():
         tm = Transmorgrifier()
         tm.load( args.model )
 
-        tm.demo( args.share is not None )
+        tm.demo( share=args.share )
 
 
 if __name__ == '__main__':

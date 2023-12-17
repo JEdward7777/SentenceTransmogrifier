@@ -13,10 +13,10 @@ license: apache-2.0
 ## Sentence Transmorgrifier
 
 # What is the Sentence Transmorgrifier?
-- The Sentence Transmorgrifier is a framework to make text to text conversion models which uses a categorical gradiant boost library, [catboost](https://catboost.ai/), as its back end.
+- The Sentence Transmorgrifier is a framework to make text to text conversion models which uses a categorical gradient boost library, [catboost](https://catboost.ai/), as its back end.
 - This library does not use neural net or word embeddings but does the transformation on the character level.
 - For Sentence Transmorgrifier to work, there has to be some common characters between the from and two conversion.
-- The model uses a modified form of the [logest common subsequence algorithm](https://en.wikipedia.org/wiki/Longest_common_subsequence_problem) to transform the sentence conversion into a sequence of three types of operations:
+- The model uses a modified form of the [longest common subsequence algorithm](https://en.wikipedia.org/wiki/Longest_common_subsequence_problem) to transform the sentence conversion into a sequence of three types of operations:
   1. Match: Pass the character from input to output
   2. Drop: Remove the incoming character from the input.
   3. Insert: Generate a character and add it to the output.
@@ -31,7 +31,7 @@ license: apache-2.0
 - The project has been configured to be able to be used in two different ways.
 
 ## Shell access
-- The transmorgrify.py script can be called directly with arguments specifying an input csv file, what lables are from and to and what to save the resulting model as or to process the input csv to an output.  Here is an example:
+- The transmorgrify.py script can be called directly with arguments specifying an input csv file, what labels are from and to and what to save the resulting model as or to process the input csv to an output.  Here is an example:
 
 ```sh
 python transmorgrify.py \
@@ -49,7 +49,7 @@ python transmorgrify.py \
  - `--b_header` This indicates the to column
  - `--device` This specifies the gpu if you have one or type `cpu` if you do not have a gpu.
  - `--model` This indicates where to save the model
- - `--verbose` Self explanitory
+ - `--verbose` Self explanatory
  - `--iterations` This indicates how many catboost iterations should be executed on your input data.
  - `--train_percentage` If you are going to use the same file for testing as well as the training, giving a train percentage will only use the percentage specified for training.
 
@@ -71,7 +71,7 @@ python transmorgrify.py \
  - `--b_header` This indicates the to column.  The to column must be specified if `--include_stats` is also specified.
  - `--device` This specifies the gpu if you have one or type `cpu` if you do not have a gpu.
  - `--model` This indicates where to load the model
- - `--verbose` Self explanitory
+ - `--verbose` Self explanatory
  - `--include_stats` This adds editing distance to the output csv so that you can sort and graph how well the model did.  It reports the Levenshtein Distance from input to output before and after transformation and the percent improvement.
  - `--out_csv` This indicates where the data should be saved after being processed by the model.
  - `--train_percentage` If you are going to use the same file for testing as well as the training, give the same train percentage as was given for training and the execution will only use the remaining data not used for training.
@@ -107,7 +107,7 @@ model -- The filename of the model to load. (default my_model.tm)
 ```
   - `execute`
 ```
-Runs the data from from_sentaces.  The results are returned 
+Runs the data from from_sentences.  The results are returned 
 using yield so you need to wrap this in list() if you want 
 to index it.  from_sentences can be an array or a generator.
 
@@ -150,4 +150,4 @@ my_model.load( "my_model.tm" )
 results = list( my_model.execute( inference_data["from_header"] ) )
 ```
 # What is the license?
-- The licence has been set to apache-2.0 to match catboost so I don't have to think about compatibility issues.
+- The license has been set to apache-2.0 to match catboost so I don't have to think about compatibility issues.
