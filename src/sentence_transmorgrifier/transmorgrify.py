@@ -12,8 +12,13 @@ MATCH = 0
 DELETE_FROM = 1
 INSERT_TO = 2
 START = 3
+UPPERCASE = 4
+LOWERCASE = 5
 
-FILE_VERSION = 1
+CASE_CHANGE_COST = 0.001
+
+FILE_VERSION = 2
+#version 2 added uppercase and lowercase actions.
 
 class Transmorgrifier:
     def __init__( self ):
@@ -203,6 +208,10 @@ class _edit_trace_hop():
             return f"<del> {self.char}"
         elif self.action == MATCH:
             return f"<match> {self.char}"
+        elif self.action == UPPERCASE:
+            return f"<upper> {self.char}"
+        elif self.action == LOWERCASE:
+            return f"<lower> {self.char}"
         return "eh?"
 
     def __repr__( self ):
@@ -221,6 +230,10 @@ def _diffs_to_str( current_node ):
         result +=   f"i-{current_node.char}"
     elif current_node.action == DELETE_FROM:
         result +=   f"d-{current_node.char}"
+    elif current_node.action == UPPERCASE:
+        result +=   f"^-{current_node.char}"
+    elif current_node.action == LOWERCASE:
+        result +=   f"v-{current_node.char}"
 
     return result
 
@@ -292,6 +305,21 @@ def _trace_edits( from_sentence, to_sentence, print_debug=False, randomize_edit_
                     best_option.action = DELETE_FROM
                     best_option.repeat_insert_delete_count = delete_option_repeat_count
 
+                #check for case-change (uppercase or lowercase)
+                if to_column_i > 0:
+                    from_char = from_sentence[from_row_i-1]
+                    to_char = to_sentence[to_column_i-1]
+                    if from_char.lower() == to_char.lower() and from_char != to_char:
+                        if best_option is None or last_row[to_column_i-1].edit_distance + CASE_CHANGE_COST <= best_option.edit_distance:
+                            best_option = _edit_trace_hop()
+                            best_option.parent = last_row[to_column_i-1]
+                            best_option.edit_distance = best_option.parent.edit_distance + CASE_CHANGE_COST + _bit_of_random()
+                            best_option.char = from_char
+                            best_option.from_row_i = from_row_i
+                            best_option.to_column_i = to_column_i
+                            best_option.action = UPPERCASE if to_char.isupper() else LOWERCASE
+                            best_option.repeat_insert_delete_count = best_option.parent.repeat_insert_delete_count
+                
                 #check match
                 if to_column_i > 0:
                     if to_sentence[to_column_i-1] == from_sentence[from_row_i-1]:
@@ -363,6 +391,18 @@ def _parse_single_for_training( from_sentence, to_sentence, num_pre_context_char
         elif thing.action == MATCH:
             used_from += working_from[0]
             working_to += working_from[0]
+            working_from = working_from[1:]
+            continuous_added = 0
+            continuous_dropped = 0
+        elif thing.action == UPPERCASE:
+            used_from += working_from[0]
+            working_to += working_from[0].upper()
+            working_from = working_from[1:]
+            continuous_added = 0
+            continuous_dropped = 0
+        elif thing.action == LOWERCASE:
+            used_from += working_from[0]
+            working_to += working_from[0].lower()
             working_from = working_from[1:]
             continuous_added = 0
             continuous_dropped = 0
@@ -545,6 +585,18 @@ def _do_reconstruct( action_model, char_model, constant_output, text, num_pre_co
         elif action_model_result == MATCH:
             used_from += working_from[0]
             working_to += working_from[0]
+            working_from = working_from[1:]
+            continuous_added = 0
+            continuous_dropped = 0
+        elif action_model_result == UPPERCASE:
+            used_from += working_from[0]
+            working_to += working_from[0].upper()
+            working_from = working_from[1:]
+            continuous_added = 0
+            continuous_dropped = 0
+        elif action_model_result == LOWERCASE:
+            used_from += working_from[0]
+            working_to += working_from[0].lower()
             working_from = working_from[1:]
             continuous_added = 0
             continuous_dropped = 0
