@@ -15,10 +15,12 @@ license: apache-2.0
 - The Sentence Transmorgrifier is a framework to make text to text conversion models which uses a categorical gradient boost library, [catboost](https://catboost.ai/), as its back end.
 - This library does not use neural net or word embeddings but does the transformation on the character level.
 - For Sentence Transmorgrifier to work, there has to be some common characters between the from and two conversion.
-- The model uses a modified form of the [longest common subsequence algorithm](https://en.wikipedia.org/wiki/Longest_common_subsequence_problem) to transform the sentence conversion into a sequence of three types of operations:
+- The model uses a modified form of the [longest common subsequence algorithm](https://en.wikipedia.org/wiki/Longest_common_subsequence_problem) to transform the sentence conversion into a sequence of five types of operations:
   1. Match: Pass the character from input to output
   2. Drop: Remove the incoming character from the input.
   3. Insert: Generate a character and add it to the output.
+  4. Uppercase: Change the case of the character to uppercase.
+  5. Lowercase: Change the case of the character to lowercase.
 - The transformation uses a sliding context window of the next n incoming characters, ``n`` output transformed chars and n output untransformed chars.
 - Because the window is sliding, there is no fixed length on the character sequences which can be transformed.
 
