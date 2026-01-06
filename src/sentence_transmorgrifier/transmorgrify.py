@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import zipfile
+import random
 
 import pandas as pd
 from catboost import CatBoostClassifier, Pool
@@ -15,7 +16,16 @@ START = 3
 FILE_VERSION = 1
 
 class Transmorgrifier:
-    def train( self, from_sentences, to_sentences, iterations = 4000, device = 'cpu', trailing_context = 7, leading_context = 7, verbose=True ):
+    def __init__( self ):
+        self.name = 'my_model.tm'
+        self.leading_context = 7
+        self.trailing_context = 7
+        self.iterations = 4000
+        self.action_model = None
+        self.char_model = None
+        self.constant_output = None
+
+    def train( self, from_sentences, to_sentences, iterations = 4000, device = 'cpu', trailing_context = 7, leading_context = 7, verbose=True, randomize_edit_path=False ):
         """
         Train the Transmorgrifier model.  This does not save it to disk but just trains in memory.
 
@@ -27,8 +37,9 @@ class Transmorgrifier:
         trailing_context -- The number of characters after the action point to include for context. (default 7)
         leading_context -- The number of characters before the action point to include for context. (default 7)
         verbose -- Increased the amount of text output during training. (default True)
+        randomize_edit_path -- If True, randomly permute the order of the edit path. (default False)
         """
-        X,Y = _parse_for_training( from_sentences, to_sentences, num_pre_context_chars=leading_context, num_post_context_chars=trailing_context )
+        X,Y = _parse_for_training( from_sentences, to_sentences, num_pre_context_chars=leading_context, num_post_context_chars=trailing_context, randomize_edit_path=randomize_edit_path )
 
         #train and save the action_model
         self.action_model = _train_catboost( X, Y['action'], iterations, verbose=verbose, device=device, model_piece='action' )
@@ -213,10 +224,16 @@ def _diffs_to_str( current_node ):
 
     return result
 
-def _trace_edits( from_sentence, to_sentence, print_debug=False ):
+def _trace_edits( from_sentence, to_sentence, print_debug=False, randomize_edit_path=False ):
     #iterating from will be the rows down the left side.
     #iterating to will be the columns across the top.
     #we will keep one row as we work on the next.
+
+    def _bit_of_random():
+        if randomize_edit_path:
+            return (random.random()-0.5) * .001
+        else:
+            return 0
 
     last_row = None
     current_row = []
@@ -246,7 +263,7 @@ def _trace_edits( from_sentence, to_sentence, print_debug=False ):
                 if best_option is None or current_row[to_column_i-1].edit_distance + 1 < best_option.edit_distance:
                     best_option = _edit_trace_hop()
                     best_option.parent = current_row[to_column_i-1]
-                    best_option.edit_distance = best_option.parent.edit_distance + 1
+                    best_option.edit_distance = best_option.parent.edit_distance + 1 + _bit_of_random()
                     best_option.char = to_sentence[to_column_i-1]
                     best_option.from_row_i = from_row_i
                     best_option.to_column_i = to_column_i
@@ -268,7 +285,7 @@ def _trace_edits( from_sentence, to_sentence, print_debug=False ):
                          delete_option_repeat_count < best_option.repeat_insert_delete_count)):
                     best_option = _edit_trace_hop()
                     best_option.parent = last_row[to_column_i]
-                    best_option.edit_distance = best_option.parent.edit_distance + 1
+                    best_option.edit_distance = best_option.parent.edit_distance + 1 + _bit_of_random()
                     best_option.char = from_sentence[from_row_i-1]
                     best_option.from_row_i = from_row_i
                     best_option.to_column_i = to_column_i
@@ -281,7 +298,7 @@ def _trace_edits( from_sentence, to_sentence, print_debug=False ):
                         if best_option is None or last_row[to_column_i-1].edit_distance <= best_option.edit_distance: #prefer match so use <= than <
                             best_option = _edit_trace_hop()
                             best_option.parent = last_row[to_column_i-1]
-                            best_option.edit_distance = best_option.parent.edit_distance + 1
+                            best_option.edit_distance = best_option.parent.edit_distance + _bit_of_random() #+1
                             best_option.char = from_sentence[from_row_i-1]
                             best_option.from_row_i = from_row_i
                             best_option.to_column_i = to_column_i
@@ -299,8 +316,8 @@ def _trace_edits( from_sentence, to_sentence, print_debug=False ):
     return last_row[-1]
 
 
-def _parse_single_for_training( from_sentence, to_sentence, num_pre_context_chars, num_post_context_chars ):
-    trace = _trace_edits( from_sentence, to_sentence )
+def _parse_single_for_training( from_sentence, to_sentence, num_pre_context_chars, num_post_context_chars, randomize_edit_path ):
+    trace = _trace_edits( from_sentence, to_sentence, randomize_edit_path=randomize_edit_path )
 
     #we will collect a snapshot at each step.
     trace_list = _list_trace(trace)
@@ -401,13 +418,13 @@ def _parse_single_for_training( from_sentence, to_sentence, num_pre_context_char
     return pd.DataFrame( context_split_into_dict ), pd.DataFrame( result_split_into_dict )
 
 
-def _parse_for_training( from_sentences, to_sentences, num_pre_context_chars, num_post_context_chars ):
+def _parse_for_training( from_sentences, to_sentences, num_pre_context_chars, num_post_context_chars, randomize_edit_path ):
     out_observations_list = []
     out_results_list = []
 
     for index, (from_sentence, to_sentence) in enumerate(zip( from_sentences, to_sentences )):
         if type(from_sentence) != float and type(to_sentence) != float: #bad lines are nan which are floats.
-            specific_observation, specific_result = _parse_single_for_training( from_sentence, to_sentence, num_pre_context_chars=num_pre_context_chars, num_post_context_chars=num_post_context_chars )
+            specific_observation, specific_result = _parse_single_for_training( from_sentence, to_sentence, num_pre_context_chars=num_pre_context_chars, num_post_context_chars=num_post_context_chars, randomize_edit_path=randomize_edit_path )
 
             out_observations_list.append( specific_observation )
             out_results_list.append( specific_result )
@@ -704,4 +721,5 @@ def main():
 if __name__ == '__main__':
     main()
 
-    #_trace_edits( "pot22q22ato", "pot3333qato", True )
+    # for i in range(100):
+    #     _trace_edits( "pot22q22ato", "pot3333qato", True, True )
